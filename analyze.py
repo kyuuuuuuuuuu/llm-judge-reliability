@@ -31,14 +31,14 @@ qof = lambda k: int(k.split('|')[0])
 
 
 def boot(per_q, stat=lambda a, n: a / n if n else float('nan')):
-    """per_q: {qid: (agree, n)} -> (point, lo, hi) with a question-level bootstrap."""
-    a, n = sum(v[0] for v in per_q.values()), sum(v[1] for v in per_q.values())
+    """per_q: {qid: (agree, n, ...)} -> (point, lo, hi, n); stat gets the column sums. Question-level bootstrap."""
+    tot = lambda vs: [sum(c) for c in zip(*vs)] or [0, 0]
     rnd, qs, out = random.Random(7), list(per_q), []
     for _ in range(NB):
-        s = [per_q[rnd.choice(qs)] for _ in qs]
-        out.append(stat(sum(x[0] for x in s), sum(x[1] for x in s)))
+        out.append(stat(*tot([per_q[rnd.choice(qs)] for _ in qs])))
     out.sort()
-    return stat(a, n), out[int(.025 * NB)], out[int(.975 * NB)], n
+    t = tot(per_q.values())
+    return stat(*t), out[int(.025 * NB)], out[int(.975 * NB)], t[1]
 
 
 def fmt(t):
@@ -72,6 +72,25 @@ def human_human():
             if 'tie' not in (h1, h2):
                 s2[qof(k)][0] += h1 == h2; s2[qof(k)][1] += 1
     return boot({q: tuple(v) for q, v in s1.items()}), boot({q: tuple(v) for q, v in s2.items()})
+
+
+def vs_experts(judge):
+    """S2 on the pairs with 2+ experts that the judge covered: judge-expert, expert-expert, paired difference."""
+    by = C.defaultdict(list)
+    for k, j, h in human:
+        by[k].append((j, h))
+    keys = [k for k, vs in by.items() if judge.get(k) and len({j for j, _ in vs}) > 1]
+    per_q = C.defaultdict(lambda: [0, 0, 0, 0])
+    for k in keys:
+        c = per_q[qof(k)]
+        for _, h in by[k]:
+            if 'tie' not in (judge[k], h):
+                c[0] += judge[k] == h; c[1] += 1
+        for (j1, h1), (j2, h2) in I.combinations(by[k], 2):
+            if j1 != j2 and 'tie' not in (h1, h2):
+                c[2] += h1 == h2; c[3] += 1
+    a, n, b, m = (sum(c) for c in zip(*per_q.values()))
+    return len(keys), (a / n, n), (b / m, m), boot(per_q, lambda a, n, b, m: a / n - b / m)
 
 
 def verdicts(recs, model, thinking, temp, order, run):
@@ -166,6 +185,24 @@ def main():
             w(f'| {m} think-{t} | {fmt(a[0])} | {fmt(a[1])} | {pc * 100:.1f}% |')
         g = agree_vs_human({k: v for k, v in gpt4.items() if k in sub})
         w(f'| GPT-4 (MT-Bench) | {fmt(g[0])} | {fmt(g[1])} | |')
+
+    # judge vs one expert against expert vs expert: only comparable on the same pairs
+    w('\n## Judge-expert against expert-expert, same pairs (2+ experts; S2; paired bootstrap over questions)\n')
+    w('| judge | pairs | judge-expert | expert-expert | difference [95% CI] |')
+    w('|---|---|---|---|---|')
+    V = lambda m, t, o: verdicts(P, m, t, None, o, 'r1')
+    for name, j in [('deepseek-flash think-on', swap(V('deepseek-flash', 'on', 'AB'), V('deepseek-flash', 'on', 'BA'))),
+                    ('deepseek-flash think-off', swap(V('deepseek-flash', 'off', 'AB'), V('deepseek-flash', 'off', 'BA'))),
+                    ('deepseek-v4-pro think-on', swap(V('deepseek-v4-pro', 'on', 'AB'), V('deepseek-v4-pro', 'on', 'BA'))),
+                    ('GPT-4 (MT-Bench)', gpt4)]:
+        if not j:
+            continue
+        n, je, ee, d = vs_experts(j)
+        out[f'vs_experts|{name}'] = dict(pairs=n, judge_expert=je, expert_expert=ee, diff=d)
+        w(f'| {name} | {n} | {je[0] * 100:.1f}% (n={je[1]}) | {ee[0] * 100:.1f}% (n={ee[1]}) | '
+          f'{d[0] * 100:+.1f} [{d[1] * 100:+.1f}, {d[2] * 100:+.1f}] |')
+    w('\nPositive = the judge sides with the expert majority more often than one expert sides with another; '
+      'it does not mean the judge beats the experts.')
 
     # where do judge and humans disagree? split by whether the experts agreed among themselves
     ab, ba = verdicts(P, 'deepseek-flash', 'on', None, 'AB', 'r1'), verdicts(P, 'deepseek-flash', 'on', None, 'BA', 'r1')

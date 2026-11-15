@@ -26,6 +26,17 @@
 | deepseek-v4-pro think-on | 68.8% [64.2, 73.5] (n=850) | 83.6% [79.4, 87.8] (n=586) | 91.7% |
 | GPT-4 (MT-Bench) | 66.7% [61.8, 71.8] (n=850) | 83.8% [79.2, 88.0] (n=555) | |
 
+## Judge-expert against expert-expert, same pairs (2+ experts; S2; paired bootstrap over questions)
+
+| judge | pairs | judge-expert | expert-expert | difference [95% CI] |
+|---|---|---|---|---|
+| deepseek-flash think-on | 483 | 85.4% (n=890) | 82.0% (n=771) | +3.4 [+0.4, +6.5] |
+| deepseek-flash think-off | 484 | 86.5% (n=865) | 82.0% (n=772) | +4.5 [+0.5, +8.1] |
+| deepseek-v4-pro think-on | 245 | 84.2% (n=444) | 81.8% (n=423) | +2.4 [-2.4, +7.1] |
+| GPT-4 (MT-Bench) | 484 | 86.0% (n=798) | 82.0% (n=772) | +4.0 [+0.6, +7.1] |
+
+Positive = the judge sides with the expert majority more often than one expert sides with another; it does not mean the judge beats the experts.
+
 ## Flash (swap) vs humans, by how much the experts agreed among themselves (pairs with 2+ votes)
 
 - experts unanimous (290 pairs): flash S1 86.7% [81.7, 91.2] (n=705), S2 96.5% [93.5, 98.9] (n=573); GPT-4 S1 83.7% [77.2, 89.4] (n=707), S2 95.9% [92.9, 98.4] (n=539)

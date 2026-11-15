@@ -1,6 +1,6 @@
 # 模型当评委，靠得住吗？
 
-**Is an LLM judge reliable?** Using MT-Bench's public expert votes (turn 1: 910 answer pairs, 1,689 votes), I measured DeepSeek V4.1 Flash and V4 Pro as LLM judges. Excluding ties, Flash agrees with the experts 85.4% of the time, on par with GPT-4 (85.9%) and above expert-to-expert agreement (82.0%); the disagreements sit where the experts disagree among themselves (96.5% on unanimous pairs, 65.3% on split ones). Swapping the two answers flips 7.4% of verdicts, mostly toward whichever answer is shown first, and temperature 0 does not make verdicts deterministic. On an 80-question suite, re-running the judge moves a model's mean score by at most 0.2 points, while the paired 95% CI between two models is about ±0.6: more questions narrow it, repeated judging barely does. About 8,600 API calls, under ¥40. Details below are in Chinese; all raw verdicts are in `results/`.
+**Is an LLM judge reliable?** Using MT-Bench's public expert votes (turn 1: 910 answer pairs, 1,689 votes), I measured DeepSeek V4.1 Flash and V4 Pro as LLM judges. Excluding ties, Flash agrees with an individual expert 85.4% of the time, on par with GPT-4 (85.9%). Two experts agree with each other 82.0% of the time; on the same pairs the judge's gap is +3.4 points (95% CI +0.4 to +6.5), which is expected of a judge that sides with the expert majority and does not mean it beats the experts. The disagreements sit where the experts disagree among themselves (96.5% on unanimous pairs, 65.3% on split ones). Swapping the two answers flips 7.4% of verdicts, mostly toward whichever answer is shown first, and temperature 0 does not make verdicts deterministic. On an 80-question suite, re-running the judge moves a model's mean score by at most 0.2 points, while the paired 95% CI between two models is about ±0.6: more questions narrow it, repeated judging barely does. About 8,600 API calls, under ¥40. Details below are in Chinese; all raw verdicts are in `results/`.
 
 用 MT-Bench 公开的专家标注，量 DeepSeek 当评委的四件事：
 
@@ -21,6 +21,7 @@
 
 95% 区间都在 ±3 到 ±5 个点，这几个评委之间分不出高下。
 
+- **比专家之间略高，但不是比专家强。** 专家之间的一致率只能在有两位以上专家投票的配对上算，两个区间也有重叠，直接比看不出高下。放到同一批配对上做配对比较（Flash 有判决的 483 组）：Flash 比专家之间高 3.4 个点，95% 区间 +0.4 到 +6.5；GPT-4 高 4.0 个点；Pro 只跑了一半配对，分不出来。一个总站在多数意见那边的评委，和单个专家的一致率本来就会高于两个专家之间，所以这说明评委贴近专家的多数意见，不说明它比专家强。
 - **分歧集中在专家自己也有分歧的题上。** 专家意见一致的 290 组，评委 96.5% 对得上；专家有分歧的 195 组，只有 65.3%。GPT-4 也是 95.9% 和 65.3%。
 - **顺序会影响判决。** 两个回答换个位置，Flash 开思考有 92.6% 的判决不变，关思考 88.4%；变的时候多半偏向先出现的那个。正反各跑一次、不一致记平局，能去掉这个偏差。
 - **温度 0 不等于结果固定。** 两两比较跑两次，94.4% 的判决一样；关思考、温度设 0，也只有 93.0%。单独打分（1–10 分），两次分数完全一样的占 69.0%，温度 0 时 72.9%；差 3 分以上的不到 1%。
