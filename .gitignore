@@ -1,0 +1,8 @@
+data/
+promptfoo/tests.yaml
+promptfoo/prompt.json
+promptfoo/node_modules/
+promptfoo/.promptfoo/
+__pycache__/
+*.pyc
+.DS_Store

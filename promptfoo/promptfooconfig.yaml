@@ -1,0 +1,27 @@
+# Judge the judge: does a DeepSeek judge agree with MT-Bench experts,
+# and does it keep its verdict when the two answers swap places?
+# Each pair appears twice in tests.yaml (order AB and BA); --repeat 2 re-runs every test.
+# Run: promptfoo eval -c promptfooconfig.yaml --repeat 2 --no-cache -j 2 -o pf-results.json
+description: LLM judge vs MT-Bench expert votes (position swap + repeat)
+
+prompts:
+  - id: file://prompt.json          # MT-Bench pair-v2 judge prompt, unchanged
+    label: mtbench-pair-v2
+
+providers:
+  - id: deepseek:deepseek-flash
+    config:
+      showThinking: false           # keep the reasoning out of the graded output
+      max_tokens: 8192
+
+defaultTest:
+  assert:
+    # pass = the judge's last [[A]]/[[B]]/[[C]] matches the experts' (unanimous) vote
+    - type: javascript
+      value: |
+        const hits = [...output.matchAll(/\[\[([ABC])\]\]/g)].map(m => m[1]);
+        const got = hits.length ? hits[hits.length - 1] : 'none';
+        return { pass: got === context.vars.expected, score: got === context.vars.expected ? 1 : 0,
+                 reason: `judge=${got} experts=${context.vars.expected} order=${context.vars.order}` };
+
+tests: file://tests.yaml
